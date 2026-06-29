@@ -1,12 +1,9 @@
 export async function getNews() {
-  return [
-    {
-      title: "SpaceX Starship test successful",
-      impact: 94,
-    },
-    {
-      title: "NASA signs new agreement",
-      impact: 87,
-    },
-  ];
+  const response = await fetch(
+    "https://api.spaceflightnewsapi.net/v4/articles/?limit=5"
+  );
+
+  const data = await response.json();
+
+  return data.results;
 }
