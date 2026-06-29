@@ -1,8 +1,24 @@
-export async function analyzeNews(news) {
+export async function analyzeNews(article) {
   return {
-    score: 94,
+    relatedStocks: ["SPCX"],
+
+    importance: 94,
+
+    sentiment: "positive",
+
+    decisionImpact: "high",
+
+    confidence: 93,
+
+    ignore: false,
+
     summary:
-      "AI analizi tamamlandı. Haber akışı kısa vadede olumlu görünüyor.",
-    confidence: 92,
+      "Starship gelişmesi kısa vadede SPCX için olumlu beklenti oluşturuyor.",
+
+    reasons: [
+      "Starship",
+      "NASA",
+      "Görev takvimi"
+    ]
   };
 }

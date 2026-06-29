@@ -29,7 +29,7 @@ function Dashboard() {
         ))}
       </div>
 
-      <NewsFeed />
+      <NewsFeed news={news} />
     </main>
   );
 }
