@@ -63,7 +63,9 @@ export default function Sidebar() {
             Açık
           </span>
         </div>
-        <p className="text-sm font-medium text-slate-200">SPCX takibi aktif</p>
+        <p className="text-sm font-medium text-slate-200">
+          Çoklu piyasa takibi aktif
+        </p>
         <p className="mt-1 text-xs leading-5 text-slate-500">
           Kritik gelişmeler gerçek zamanlı izleniyor.
         </p>

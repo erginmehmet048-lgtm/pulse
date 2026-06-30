@@ -2,12 +2,16 @@ import { getHistoricalReaction } from "../services/historicalEngine";
 import AnalysisBadge from "./AnalysisBadge";
 
 function getImportanceScore(item) {
-  const value =
-    item.analysis?.importanceScore ?? item.importanceScore ?? item.importance;
-  const score = Number(value);
+  const score = Number(item.importanceScore);
 
   return Number.isFinite(score) ? Math.min(Math.max(score, 0), 100) : 0;
 }
+
+const impactStyles = {
+  High: "border-amber-300/20 bg-amber-300/[0.08] text-amber-300",
+  Medium: "border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-300",
+  Low: "border-slate-400/20 bg-slate-400/[0.08] text-slate-400",
+};
 
 function getPublishedTime(value) {
   const time = new Date(value).getTime();
@@ -68,8 +72,8 @@ function NewsFeed({ news }) {
           const history = getHistoricalReaction(item.stock, item.eventType);
           const importanceScore = getImportanceScore(item);
           const isCriticalSignal = index < 3;
-          const priorityLabel =
-            importanceScore >= 70 ? "High Impact" : "Critical Signal";
+          const impactStyle =
+            impactStyles[item.impactLabel] || impactStyles.Low;
 
           return (
             <article
@@ -83,17 +87,11 @@ function NewsFeed({ news }) {
               <div className="grid lg:grid-cols-[minmax(0,1fr)_260px]">
                 <div className="min-w-0 p-5 sm:p-6">
                   <div className="mb-4 flex flex-wrap items-center gap-2.5">
-                    {isCriticalSignal && (
-                      <span
-                        className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${
-                          importanceScore >= 70
-                            ? "border-amber-300/20 bg-amber-300/[0.08] text-amber-300"
-                            : "border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-300"
-                        }`}
-                      >
-                        {priorityLabel}
-                      </span>
-                    )}
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${impactStyle}`}
+                    >
+                      {item.impactLabel} Impact
+                    </span>
                     <AnalysisBadge sentiment={item.sentiment} />
                     <span className="text-xs font-medium text-slate-400">
                       {item.source || "Bilinmeyen kaynak"}
@@ -116,9 +114,14 @@ function NewsFeed({ news }) {
                     </svg>
                   </a>
 
-                  <p className="mt-3 line-clamp-3 max-w-3xl text-sm leading-6 text-slate-400">
-                    {item.summary || item.description || "Bu haber için kısa özet bulunmuyor."}
-                  </p>
+                  <div className="mt-4 max-w-3xl rounded-xl border border-white/[0.06] bg-white/[0.025] p-3.5">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-cyan-300/70">
+                      AI Summary
+                    </p>
+                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-400">
+                      {item.shortSummary}
+                    </p>
+                  </div>
 
                   {!!item.tags?.length && (
                     <div className="mt-4 flex flex-wrap gap-2">

@@ -1,7 +1,3 @@
-const companyNames = {
-  SPCX: "SpaceX Intelligence",
-};
-
 const statusStyles = {
   "BUY WATCH": {
     label: "BUY",
@@ -19,9 +15,12 @@ const statusStyles = {
 
 function LiveMarketCard({
   symbol = "SPCX",
+  name,
+  marketName,
   price = 0,
   change = 0,
   changePercent = 0,
+  currency = "USD",
   impactScore = 0,
   status = "NEUTRAL WATCH",
   importantNewsCount = 0,
@@ -31,7 +30,21 @@ function LiveMarketCard({
   const isPositive = change >= 0;
   const changeTone = isPositive ? "text-emerald-400" : "text-rose-400";
   const statusStyle = statusStyles[status] || statusStyles["NEUTRAL WATCH"];
-  const companyName = companyNames[symbol] || `${symbol} Market Intelligence`;
+  const companyName = name || `${symbol} Market Intelligence`;
+  const formattedPrice = new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(price));
+  const currencySymbol =
+    new Intl.NumberFormat("tr-TR", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    })
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value ?? currency;
 
   return (
     <section className="relative mb-7 min-h-[340px] overflow-hidden rounded-[30px] border border-white/[0.11] bg-white/[0.04] p-5 shadow-[0_35px_100px_rgba(0,0,0,0.35)] backdrop-blur-2xl sm:p-8 lg:min-h-[370px] lg:p-10">
@@ -46,7 +59,7 @@ function LiveMarketCard({
             Live Market
           </div>
           <span className="rounded-full border border-white/[0.09] bg-black/15 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
-            Real-time intelligence
+            {marketName} · Demo data
           </span>
         </div>
 
@@ -63,15 +76,12 @@ function LiveMarketCard({
 
             <div className="mt-6 flex flex-wrap items-end gap-x-5 gap-y-3">
               <p className="text-5xl font-semibold leading-none tracking-[-0.055em] text-white sm:text-6xl lg:text-7xl">
-                $
-                {Number(price).toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {formattedPrice}
               </p>
               <div className="pb-1">
                 <p className={`text-lg font-semibold ${changeTone}`}>
-                  {isPositive ? "+" : "-"}$
+                  {isPositive ? "+" : "-"}
+                  {currencySymbol}
                   {Math.abs(change).toFixed(2)}
                 </p>
                 <p className={`mt-1 text-sm font-medium ${changeTone}`}>

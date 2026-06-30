@@ -1,4 +1,4 @@
-import { analyzeNews } from "./aiService";
+import { analyzeNews } from "./newsAnalysisService";
 
 const API_URL = "https://api.spaceflightnewsapi.net/v4/articles/";
 
@@ -18,7 +18,8 @@ export async function getNews() {
       return {
         id: article.id,
         title: article.title,
-        summary: analysis.summary || article.summary,
+        summary: analysis.shortSummary,
+        shortSummary: analysis.shortSummary,
         originalSummary: article.summary,
         url: article.url,
         source: article.news_site,
@@ -27,15 +28,16 @@ export async function getNews() {
 
         stock: analysis.relatedStocks?.[0] || "SPCX",
         eventType: analysis.eventType || "general_news",
-        importance: analysis.importance,
+        importanceScore: analysis.importanceScore,
+        importance: analysis.importanceScore,
         sentiment: analysis.sentiment,
-        decisionImpact: analysis.decisionImpact,
+        impactLabel: analysis.impactLabel,
+        decisionImpact: analysis.impactLabel.toLowerCase(),
         confidence: analysis.confidence,
-        ignore: analysis.ignore,
-        tags: analysis.reasons || [],
+        tags: analysis.matchedKeywords,
       };
     })
   );
 
-  return analyzedNews.filter((item) => !item.ignore);
+  return analyzedNews;
 }

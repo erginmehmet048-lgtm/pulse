@@ -1,4 +1,4 @@
-function Header() {
+function Header({ marketName, symbol }) {
   return (
     <header className="mb-7 flex items-start justify-between gap-5 border-b border-white/[0.07] pb-6">
       <div className="min-w-0">
@@ -13,10 +13,11 @@ function Header() {
           Market intelligence
         </div>
         <h1 className="truncate text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-          SPCX Intelligence Dashboard
+          {symbol} Intelligence Dashboard
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-          Haber akışını, piyasa etkisini ve geçmiş olayları tek bakışta izleyin.
+          {marketName} · Haber akışını, piyasa etkisini ve geçmiş olayları tek
+          bakışta izleyin.
         </p>
       </div>
 

@@ -1,4 +1,4 @@
-import historicalReactions from "../data/historicalReactions";
+import historicalReactions from "../data/historicalReactions.js";
 
 export function getHistoricalReaction(stock, eventType) {
   const reaction = historicalReactions.find(
