@@ -13,6 +13,7 @@ import {
 } from "./data/markets";
 import { useNews } from "./hooks/useNews";
 import { generateDecisionSummary } from "./services/decisionCenterService";
+import { generateExplanation } from "./services/explainableAIService";
 import { getMarketSnapshot } from "./services/marketService";
 
 function Dashboard() {
@@ -33,6 +34,10 @@ function Dashboard() {
       ),
     [news, selectedMarket.id, selectedSymbol],
   );
+  const decisionExplanation = useMemo(
+    () => generateExplanation(decisionSummary),
+    [decisionSummary],
+  );
 
   function handleMarketChange(marketId) {
     const nextMarket = getMarketById(marketId);
@@ -46,6 +51,7 @@ function Dashboard() {
       <Header marketName={selectedMarket.name} symbol={selectedSymbol} />
 
       <AIDecisionCenter
+        explanation={decisionExplanation}
         symbol={selectedSymbol}
         summary={decisionSummary}
       />

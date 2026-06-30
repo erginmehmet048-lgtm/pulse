@@ -37,7 +37,7 @@ const historicalSignalStyles = {
     "border-slate-400/20 bg-slate-400/[0.06] text-slate-400",
 };
 
-function AIDecisionCenter({ symbol, summary }) {
+function AIDecisionCenter({ explanation, symbol, summary }) {
   const sentiment =
     sentimentStyles[summary.overallSentiment] || sentimentStyles.neutral;
   const riskStyle = riskStyles[summary.riskLevel] || riskStyles.Medium;
@@ -65,6 +65,40 @@ function AIDecisionCenter({ symbol, summary }) {
       label: "High Impact",
       value: summary.newsCounts.highImpact,
       tone: "text-cyan-200",
+    },
+  ];
+  const explanationItems = [
+    {
+      label: "Positive driver",
+      text: explanation.positiveFactors.join(" "),
+      icon: "+",
+      iconStyle:
+        "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-200",
+    },
+    {
+      label: "Risk driver",
+      text: explanation.negativeFactors.join(" "),
+      icon: "!",
+      iconStyle: "border-rose-300/20 bg-rose-300/[0.08] text-rose-200",
+    },
+    {
+      label: "Historical memory",
+      text: explanation.historicalReason,
+      icon: "↺",
+      iconStyle: "border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200",
+    },
+    {
+      label: "Confidence reason",
+      text: explanation.confidenceReason,
+      icon: "%",
+      iconStyle:
+        "border-violet-300/20 bg-violet-300/[0.08] text-violet-200",
+    },
+    {
+      label: "Final takeaway",
+      text: explanation.finalTakeaway,
+      icon: "→",
+      iconStyle: "border-white/[0.1] bg-white/[0.05] text-slate-200",
     },
   ];
 
@@ -250,6 +284,46 @@ function AIDecisionCenter({ symbol, summary }) {
                 {summary.executiveSummary}
               </p>
             </div>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-white/[0.08] bg-black/15 p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-300">
+                Why this score?
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                Rule-based decision factors
+              </p>
+            </div>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-700">
+              5 signals
+            </span>
+          </div>
+
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+            {explanationItems.map((item) => (
+              <div
+                key={item.label}
+                className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3.5"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border text-[10px] font-bold ${item.iconStyle}`}
+                    aria-hidden="true"
+                  >
+                    {item.icon}
+                  </span>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    {item.label}
+                  </p>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-slate-400">
+                  {item.text}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
