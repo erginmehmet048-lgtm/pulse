@@ -1,11 +1,4 @@
-import { getHistoricalReaction } from "../services/historicalEngine";
 import AnalysisBadge from "./AnalysisBadge";
-
-function getImportanceScore(item) {
-  const score = Number(item.importanceScore);
-
-  return Number.isFinite(score) ? Math.min(Math.max(score, 0), 100) : 0;
-}
 
 const impactStyles = {
   High: "border-amber-300/20 bg-amber-300/[0.08] text-amber-300",
@@ -13,19 +6,15 @@ const impactStyles = {
   Low: "border-slate-400/20 bg-slate-400/[0.08] text-slate-400",
 };
 
-function getPublishedTime(value) {
-  const time = new Date(value).getTime();
+function formatReaction(value) {
+  const reaction = Number(value);
 
-  return Number.isFinite(time) ? time : 0;
+  if (!Number.isFinite(reaction)) return "—";
+
+  return `${reaction > 0 ? "+" : ""}${reaction.toFixed(2)}%`;
 }
 
 function NewsFeed({ news }) {
-  const sortedNews = [...(news || [])].sort(
-    (first, second) =>
-      getImportanceScore(second) - getImportanceScore(first) ||
-      getPublishedTime(second.publishedAt) - getPublishedTime(first.publishedAt),
-  );
-
   const formatDate = (value) => {
     if (!value) return "Yeni";
 
@@ -68,12 +57,12 @@ function NewsFeed({ news }) {
       )}
 
       <div className="space-y-3">
-        {sortedNews.map((item, index) => {
-          const history = getHistoricalReaction(item.stock, item.eventType);
-          const importanceScore = getImportanceScore(item);
+        {(news || []).map((item, index) => {
+          const importanceScore = item.importanceScore;
           const isCriticalSignal = index < 3;
           const impactStyle =
             impactStyles[item.impactLabel] || impactStyles.Low;
+          const memory = item.historicalMemory;
 
           return (
             <article
@@ -151,32 +140,50 @@ function NewsFeed({ news }) {
                     <div className="mt-3 h-1 overflow-hidden rounded-full bg-slate-800">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-cyan-300"
-                        style={{ width: `${Math.min(importanceScore, 100)}%` }}
+                        style={{ width: `${importanceScore}%` }}
                       />
                     </div>
                   </div>
 
                   <div className="p-5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                      Tarihsel tepki
+                      Historical Memory
                     </p>
-                    <div className="mt-2 flex items-baseline gap-2">
-                      <span className={`text-2xl font-semibold ${
-                        history.events > 0 ? "text-emerald-400" : "text-slate-400"
-                      }`}>
-                        {history.averageMove}
-                      </span>
-                      {history.events > 0 && (
-                        <span className="text-xs text-slate-600">
-                          {history.timeFrame}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-xs text-slate-500">
-                      {history.events > 0
-                        ? `${history.events} benzer olay · %${history.confidence} güven`
-                        : "Benzer geçmiş olay bulunamadı"}
-                    </p>
+                    {!memory || memory.insufficientData ? (
+                      <p className="mt-3 text-xs leading-5 text-slate-500">
+                        Not enough historical data yet.
+                      </p>
+                    ) : (
+                      <>
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <span className="text-xs text-slate-500">
+                            {memory?.totalSimilarEvents} benzer olay
+                          </span>
+                          <span className="text-xs font-semibold text-emerald-300">
+                            %{memory?.positiveRate} pozitif
+                          </span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-3 gap-1.5">
+                          {[
+                            ["1D", memory?.averageReaction1D],
+                            ["3D", memory?.averageReaction3D],
+                            ["7D", memory?.averageReaction7D],
+                          ].map(([period, reaction]) => (
+                            <div
+                              key={period}
+                              className="rounded-lg border border-white/[0.06] bg-black/10 px-2 py-2"
+                            >
+                              <p className="text-[9px] text-slate-600">
+                                {period}
+                              </p>
+                              <p className="mt-1 text-[11px] font-semibold text-slate-300">
+                                {formatReaction(reaction)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

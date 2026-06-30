@@ -23,10 +23,27 @@ const riskStyles = {
   High: "border-rose-400/20 bg-rose-400/[0.07] text-rose-300",
 };
 
+const historicalSignalStyles = {
+  "Strong Positive":
+    "border-emerald-300/25 bg-emerald-300/[0.09] text-emerald-200",
+  "Weak Positive":
+    "border-cyan-300/25 bg-cyan-300/[0.09] text-cyan-200",
+  Neutral: "border-amber-300/20 bg-amber-300/[0.07] text-amber-200",
+  "Weak Negative":
+    "border-orange-300/20 bg-orange-300/[0.07] text-orange-200",
+  "Strong Negative":
+    "border-rose-300/25 bg-rose-300/[0.09] text-rose-200",
+  "Insufficient Data":
+    "border-slate-400/20 bg-slate-400/[0.06] text-slate-400",
+};
+
 function AIDecisionCenter({ symbol, summary }) {
   const sentiment =
     sentimentStyles[summary.overallSentiment] || sentimentStyles.neutral;
   const riskStyle = riskStyles[summary.riskLevel] || riskStyles.Medium;
+  const historicalSignalStyle =
+    historicalSignalStyles[summary.historicalSignal] ||
+    historicalSignalStyles["Insufficient Data"];
   const newsMetrics = [
     { label: "Toplam", value: summary.newsCounts.total, tone: "text-white" },
     {
@@ -146,6 +163,17 @@ function AIDecisionCenter({ symbol, summary }) {
                 className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-cyan-200"
                 style={{ width: `${summary.averageImportance}%` }}
               />
+            </div>
+
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-4">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+                Historical Signal
+              </p>
+              <span
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${historicalSignalStyle}`}
+              >
+                {summary.historicalSignal}
+              </span>
             </div>
           </div>
 

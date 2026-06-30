@@ -1,7 +1,4 @@
-import { getHistoricalReaction } from "./historicalEngine.js";
-
-const FALLBACK_SIMILAR_EVENTS = 17;
-const FALLBACK_POSITIVE_REACTION_RATE = 82;
+import { findSimilarHistoricalEvents } from "./financialMemoryService.js";
 
 function clampScore(value) {
   const score = Number(value);
@@ -110,15 +107,18 @@ function getWatchStatus(overallSentiment, riskLevel, averageImportance) {
   return "NEUTRAL WATCH";
 }
 
-function getTopNews(news) {
-  return [...news]
-    .sort(
-      (first, second) =>
-        clampScore(second.importanceScore) -
-          clampScore(first.importanceScore) ||
-        getPublishedTime(second.publishedAt) -
-          getPublishedTime(first.publishedAt),
-    )
+function sortNews(news) {
+  return [...news].sort(
+    (first, second) =>
+      clampScore(second.importanceScore) -
+        clampScore(first.importanceScore) ||
+      getPublishedTime(second.publishedAt) -
+        getPublishedTime(first.publishedAt),
+  );
+}
+
+function getTopNews(sortedNews) {
+  return sortedNews
     .slice(0, 3)
     .map((item) => ({
       id: item.id,
@@ -176,58 +176,93 @@ function createExecutiveSummary({
   return `${flowSentence} ${catalystSentence} ${riskSentences[riskLevel]}`;
 }
 
+function addHistoricalMemory(news, symbol, marketId) {
+  return news.map((item) => ({
+    ...item,
+    historicalMemory: findSimilarHistoricalEvents(
+      item,
+      symbol,
+      marketId,
+    ),
+  }));
+}
+
+function getHistoricalSignal(averageReaction7D) {
+  if (averageReaction7D >= 5) return "Strong Positive";
+  if (averageReaction7D >= 1.5) return "Weak Positive";
+  if (averageReaction7D > -1.5) return "Neutral";
+  if (averageReaction7D > -5) return "Weak Negative";
+
+  return "Strong Negative";
+}
+
 function getHistoricalMetrics(news) {
-  const uniqueResults = Array.from(
+  const sufficientMemories = news
+    .map((item) => item.historicalMemory)
+    .filter((memory) => !memory.insufficientData);
+  const uniqueEvents = Array.from(
     new Map(
-      news.map((item) => [
-        `${item.stock}:${item.eventType}`,
-        getHistoricalReaction(item.stock, item.eventType),
-      ]),
+      sufficientMemories
+        .flatMap((memory) => memory.similarEvents)
+        .map((event) => [event.id, event]),
     ).values(),
-  ).filter((history) => history.events > 0);
-  const similarEventsCount = uniqueResults.length
-    ? Math.max(...uniqueResults.map((history) => history.events))
-    : FALLBACK_SIMILAR_EVENTS;
-  const reactionRates = uniqueResults
-    .map(
-      (history) =>
-        history.positiveReactionRate ?? history.positiveRate ?? null,
-    )
-    .filter((rate) => rate !== null)
-    .map(Number)
-    .filter(Number.isFinite);
-  const positiveReactionRate = reactionRates.length
-    ? Math.round(
-        reactionRates.reduce((sum, rate) => sum + rate, 0) /
-          reactionRates.length,
-      )
-    : FALLBACK_POSITIVE_REACTION_RATE;
+  );
+
+  if (!uniqueEvents.length) {
+    return {
+      historicalSignal: "Insufficient Data",
+      historicalAverageReaction7D: null,
+      similarEventsCount: 0,
+      positiveReactionRate: 0,
+    };
+  }
+
+  const averageReaction7D =
+    uniqueEvents.reduce(
+      (sum, event) => sum + event.priceReaction7D,
+      0,
+    ) / uniqueEvents.length;
+  const positiveEvents = uniqueEvents.filter(
+    (event) => event.priceReaction7D > 0,
+  ).length;
 
   return {
-    similarEventsCount,
-    positiveReactionRate,
+    historicalSignal: getHistoricalSignal(averageReaction7D),
+    historicalAverageReaction7D:
+      Math.round((averageReaction7D + Number.EPSILON) * 100) / 100,
+    similarEventsCount: uniqueEvents.length,
+    positiveReactionRate: Math.round(
+      (positiveEvents / uniqueEvents.length) * 100,
+    ),
   };
 }
 
-export function generateDecisionSummary(news = []) {
+export function generateDecisionSummary(news = [], symbol, marketId) {
   const normalizedNews = Array.isArray(news) ? news : [];
-  const newsCounts = getNewsCounts(normalizedNews);
-  const averageImportance = getAverageScore(
+  const newsWithMemory = addHistoricalMemory(
     normalizedNews,
+    symbol,
+    marketId,
+  );
+  const sortedNews = sortNews(newsWithMemory);
+  const newsCounts = getNewsCounts(sortedNews);
+  const averageImportance = getAverageScore(
+    sortedNews,
     "importanceScore",
   );
-  const averageConfidence = getAverageScore(normalizedNews, "confidence");
+  const averageConfidence = getAverageScore(sortedNews, "confidence");
   const overallSentiment = getOverallSentiment(newsCounts);
   const riskLevel = getRiskLevel(
-    normalizedNews,
+    sortedNews,
     newsCounts,
     averageConfidence,
     overallSentiment,
   );
-  const topNews = getTopNews(normalizedNews);
-  const historicalMetrics = getHistoricalMetrics(normalizedNews);
+  const topNews = getTopNews(sortedNews);
+  const historicalMetrics = getHistoricalMetrics(sortedNews);
 
   return {
+    news: sortedNews,
     averageImportance,
     averageConfidence,
     overallSentiment,

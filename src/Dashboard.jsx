@@ -25,8 +25,13 @@ function Dashboard() {
   );
   const marketSnapshot = getMarketSnapshot(selectedSymbol);
   const decisionSummary = useMemo(
-    () => generateDecisionSummary(news),
-    [news],
+    () =>
+      generateDecisionSummary(
+        news,
+        selectedSymbol,
+        selectedMarket.id,
+      ),
+    [news, selectedMarket.id, selectedSymbol],
   );
 
   function handleMarketChange(marketId) {
@@ -74,7 +79,7 @@ function Dashboard() {
         similarEventsCount={decisionSummary.similarEventsCount}
         positiveReactionRate={decisionSummary.positiveReactionRate}
       />
-      <NewsFeed news={news} />
+      <NewsFeed news={decisionSummary.news} />
       <InsightSummary
         impactScore={decisionSummary.averageImportance}
         status={decisionSummary.status}
