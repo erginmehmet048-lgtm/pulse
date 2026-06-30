@@ -51,12 +51,29 @@ const EVENT_RULES = [
 ];
 
 const STOCK_RULES = [
+  { keywords: ["spacex"], symbols: ["SPCX"] },
   { keywords: ["rocket lab"], symbols: ["RKLB"] },
   { keywords: ["tesla"], symbols: ["TSLA"] },
+  { keywords: ["nvidia"], symbols: ["NVDA"] },
+  { keywords: ["apple"], symbols: ["AAPL"] },
+  {
+    keywords: ["turkish airlines", "türk hava yolları"],
+    symbols: ["THYAO"],
+  },
+  { keywords: ["aselsan"], symbols: ["ASELS"] },
+  { keywords: ["tüpraş", "tupras"], symbols: ["TUPRS"] },
+  { keywords: ["koç holding", "koc holding"], symbols: ["KCHOL"] },
+  { keywords: ["bitcoin"], symbols: ["BTC"] },
+  { keywords: ["ethereum"], symbols: ["ETH"] },
+  { keywords: ["solana"], symbols: ["SOL"] },
+  { keywords: ["xrp", "ripple"], symbols: ["XRP"] },
 ];
 
 function clampScore(value) {
-  return Math.min(Math.max(Math.round(value), 0), 100);
+  const score = Number(value);
+
+  if (!Number.isFinite(score)) return null;
+  return Math.min(Math.max(Math.round(score), 0), 100);
 }
 
 function normalizeText(value) {
@@ -87,6 +104,7 @@ function getSentiment(positiveMatches, negativeMatches) {
 }
 
 function getImpactLabel(importanceScore) {
+  if (importanceScore === null) return null;
   if (importanceScore >= IMPACT_THRESHOLDS.high) return "High";
   if (importanceScore >= IMPACT_THRESHOLDS.medium) return "Medium";
 
@@ -125,17 +143,31 @@ function getMarketMetadata(text) {
 
   return {
     eventType: eventRule?.eventType || "general_news",
-    relatedStocks:
-      eventRule?.relatedStocks || stockRule?.symbols || ["SPCX"],
+    relatedStocks: eventRule?.relatedStocks || stockRule?.symbols || [],
   };
 }
 
 export async function analyzeNews(article = {}) {
-  const title = normalizeText(article.title);
+  const safeArticle =
+    article && typeof article === "object" ? article : {};
+  const title = normalizeText(safeArticle.title);
   const body = normalizeText(
-    `${article.summary || ""} ${article.description || ""}`,
+    `${safeArticle.summary || ""} ${safeArticle.description || ""}`,
   );
   const fullText = normalizeText(`${title} ${body}`);
+
+  if (!fullText) {
+    return {
+      sentiment: "neutral",
+      importanceScore: null,
+      confidence: null,
+      shortSummary: createShortSummary(safeArticle),
+      impactLabel: null,
+      matchedKeywords: [],
+      eventType: "general_news",
+      relatedStocks: [],
+    };
+  }
 
   const positiveMatches = findMatches(
     fullText,
@@ -173,7 +205,7 @@ export async function analyzeNews(article = {}) {
     sentiment,
     importanceScore,
     confidence,
-    shortSummary: createShortSummary(article),
+    shortSummary: createShortSummary(safeArticle),
     impactLabel: getImpactLabel(importanceScore),
     matchedKeywords: allMatches,
     ...marketMetadata,

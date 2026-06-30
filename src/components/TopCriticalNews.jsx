@@ -6,7 +6,9 @@ const impactLabels = {
   Low: "Düşük etki",
 };
 
-function TopCriticalNews({ news }) {
+function TopCriticalNews({ isLoading = false, news = [] }) {
+  const items = Array.isArray(news) ? news.filter(Boolean) : [];
+
   return (
     <section className="mb-6">
       <div className="mb-4">
@@ -18,47 +20,64 @@ function TopCriticalNews({ news }) {
         </h2>
       </div>
 
-      {news.length ? (
+      {items.length ? (
         <div className="grid gap-3 lg:grid-cols-3">
-          {news.map((item) => (
-            <article
-              key={item.id || item.title}
-              className="flex min-w-0 flex-col rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <AnalysisBadge sentiment={item.sentiment} />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
-                  {impactLabels[item.impactLabel]}
-                </span>
-              </div>
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 line-clamp-2 text-sm font-semibold leading-6 text-slate-100 transition hover:text-cyan-200"
+          {items.map((item) => {
+            const hasImpactScore =
+              Number.isFinite(item.impactScore) && item.impactScore > 0;
+
+            return (
+              <article
+                key={item.id || item.title}
+                className="flex min-w-0 flex-col rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4"
               >
-                {item.title}
-              </a>
-              <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-500">
-                {item.summary}
-              </p>
-              <div className="mt-auto flex items-end justify-between border-t border-white/[0.06] pt-4">
-                <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-600">
-                  Önem skoru
-                </span>
-                <span className="text-lg font-semibold text-cyan-200">
-                  {item.importanceScore}
-                  <span className="ml-0.5 text-[10px] text-slate-600">
-                    /100
-                  </span>
-                </span>
-              </div>
-            </article>
-          ))}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <AnalysisBadge sentiment={item.sentiment} />
+                  {impactLabels[item.impactLabel] && (
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+                      {impactLabels[item.impactLabel]}
+                    </span>
+                  )}
+                </div>
+                {item.url ? (
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 line-clamp-2 text-sm font-semibold leading-6 text-slate-100 transition hover:text-cyan-200"
+                  >
+                    {item.title}
+                  </a>
+                ) : (
+                  <h3 className="mt-4 line-clamp-2 text-sm font-semibold leading-6 text-slate-100">
+                    {item.title}
+                  </h3>
+                )}
+                {item.summary && (
+                  <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-500">
+                    {item.summary}
+                  </p>
+                )}
+                {hasImpactScore && (
+                  <div className="mt-auto flex items-end justify-between border-t border-white/[0.06] pt-4">
+                    <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+                      Önem skoru
+                    </span>
+                    <span className="text-lg font-semibold text-cyan-200">
+                      {item.impactScore}
+                      <span className="ml-0.5 text-[10px] text-slate-600">
+                        /100
+                      </span>
+                    </span>
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-white/[0.08] p-6 text-center text-sm text-slate-500">
-          Kritik haberler analiz ediliyor.
+          {isLoading ? "Kritik haberler analiz ediliyor." : "Veri yok"}
         </div>
       )}
     </section>

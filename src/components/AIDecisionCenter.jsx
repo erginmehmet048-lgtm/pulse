@@ -1,31 +1,28 @@
+import MarketSelector from "./MarketSelector";
+
 const decisionStyles = {
-  "Strong Positive": {
-    label: "Güçlü Pozitif",
+  "STRONG WATCH": {
+    label: "STRONG WATCH",
     className: "text-emerald-200",
     badge: "border-emerald-300/25 bg-emerald-300/[0.09]",
   },
-  Positive: {
-    label: "Pozitif",
-    className: "text-emerald-300",
-    badge: "border-emerald-300/20 bg-emerald-300/[0.07]",
+  "BUY WATCH": {
+    label: "BUY WATCH",
+    className: "text-cyan-200",
+    badge: "border-cyan-300/25 bg-cyan-300/[0.09]",
   },
-  Neutral: {
-    label: "Nötr",
+  WAIT: {
+    label: "WAIT",
     className: "text-amber-200",
     badge: "border-amber-300/20 bg-amber-300/[0.07]",
   },
-  Negative: {
-    label: "Negatif",
-    className: "text-rose-300",
-    badge: "border-rose-300/20 bg-rose-300/[0.07]",
-  },
-  "Strong Negative": {
-    label: "Güçlü Negatif",
+  RISKY: {
+    label: "RISKY",
     className: "text-rose-200",
     badge: "border-rose-300/25 bg-rose-300/[0.09]",
   },
-  "Insufficient Data": {
-    label: "Veri yetersiz",
+  "NO DATA": {
+    label: "NO DATA",
     className: "text-slate-400",
     badge: "border-slate-400/20 bg-slate-400/[0.06]",
   },
@@ -35,49 +32,33 @@ const riskLabels = {
   Low: "Düşük",
   Medium: "Orta",
   High: "Yüksek",
-  "Insufficient Data": "Veri yetersiz",
+  "NO DATA": "Veri yok",
 };
 
-const historicalLabels = {
-  "Strong Positive": "Güçlü Pozitif",
-  "Weak Positive": "Zayıf Pozitif",
-  Neutral: "Nötr",
-  "Weak Negative": "Zayıf Negatif",
-  "Strong Negative": "Güçlü Negatif",
-  "Insufficient Data": "Veri yetersiz",
-};
+function hasVisibleScore(value) {
+  return Number.isFinite(value) && value > 0;
+}
 
 function AIDecisionCenter({
-  companyName,
-  explanation,
+  markets,
+  onMarketChange,
+  onSymbolChange,
+  selectedMarketId,
   symbol,
-  summary,
+  summary = {},
 }) {
   const decision =
     decisionStyles[summary.decisionLabel] ||
-    decisionStyles["Insufficient Data"];
-  const explanationItems = [
-    {
-      label: "Ana pozitif etken",
-      text: explanation.positiveFactors.join(" "),
-      marker: "bg-emerald-300",
-    },
-    {
-      label: "Ana risk etkeni",
-      text: explanation.negativeFactors.join(" "),
-      marker: "bg-rose-300",
-    },
-    {
-      label: "Tarihsel hafıza",
-      text: explanation.historicalReason,
-      marker: "bg-cyan-300",
-    },
-    {
-      label: "Sonuç",
-      text: explanation.finalTakeaway,
-      marker: "bg-white",
-    },
-  ];
+    decisionStyles["NO DATA"];
+  const catalysts = Array.isArray(summary.catalysts)
+    ? summary.catalysts.filter(Boolean)
+    : [];
+  const warnings = Array.isArray(summary.warnings)
+    ? summary.warnings.filter(Boolean)
+    : [];
+  const displaySymbol = symbol || "Sembol yok";
+  const hasImpactScore = hasVisibleScore(summary.aiImpactScore);
+  const hasConfidence = hasVisibleScore(summary.confidence);
 
   return (
     <section className="relative mb-6 overflow-hidden rounded-[28px] border border-cyan-200/[0.16] bg-[#09111d] p-5 shadow-[0_32px_90px_rgba(0,0,0,0.35)] sm:p-7 lg:p-8">
@@ -85,104 +66,125 @@ function AIDecisionCenter({
       <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
 
       <div className="relative">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300">
-              Yapay Zeka Karar Merkezi
-            </p>
-            <div className="mt-2 flex flex-wrap items-baseline gap-2">
-              <h2 className="text-2xl font-semibold tracking-tight text-white">
-                {symbol}
-              </h2>
-              <span className="text-sm text-slate-500">{companyName}</span>
+        <div className="border-b border-white/[0.08] pb-6">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-300">
+                Pulse Decision
+              </p>
+              <h1 className="mt-2 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+                {displaySymbol}
+              </h1>
+            </div>
+            <div className="text-right">
+              <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                Decision Label
+              </p>
+              <span
+                className={`inline-flex rounded-full border px-4 py-2 text-xs font-semibold tracking-[0.08em] ${decision.badge} ${decision.className}`}
+              >
+                {decision.label}
+              </span>
             </div>
           </div>
-          <span
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${decision.badge} ${decision.className}`}
-          >
-            Yapay Zeka Kararı: {decision.label}
-          </span>
+
+          <MarketSelector
+            compact
+            markets={markets}
+            selectedMarketId={selectedMarketId}
+            selectedSymbol={symbol}
+            onMarketChange={onMarketChange}
+            onSymbolChange={onSymbolChange}
+          />
         </div>
 
-        <div className="grid gap-6 py-6 lg:grid-cols-[0.7fr_1.3fr] lg:items-center">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-              Ana Yapay Zeka Skoru
+        <div className="grid gap-px overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.08] my-6 sm:grid-cols-3">
+          <div className="bg-[#09111d] p-5 sm:p-6">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.17em] text-slate-600">
+              AI Impact
             </p>
-            {summary.aiImpactScore === null ? (
-              <p className="mt-3 text-2xl font-semibold text-slate-400">
-                Veri yetersiz
-              </p>
-            ) : (
-              <p className="mt-2 text-7xl font-semibold leading-none tracking-[-0.06em] text-white">
+            {hasImpactScore ? (
+              <p className="mt-3 text-5xl font-semibold leading-none tracking-[-0.05em] text-white">
                 {summary.aiImpactScore}
-                <span className="ml-1 text-sm font-medium tracking-normal text-slate-600">
+                <span className="ml-1 text-xs font-medium tracking-normal text-slate-600">
                   /100
                 </span>
+              </p>
+            ) : (
+              <p className="mt-3 text-xl font-semibold text-slate-400">
+                Veri yok
               </p>
             )}
           </div>
 
-          <div className="grid grid-cols-1 border-y border-white/[0.08] sm:grid-cols-3 sm:divide-x sm:divide-white/[0.08]">
-            <div className="py-4 sm:px-5">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                Risk seviyesi
-              </p>
-              <p className="mt-2 text-lg font-semibold text-white">
-                {riskLabels[summary.riskLevel]}
-              </p>
-            </div>
-            <div className="border-t border-white/[0.08] py-4 sm:border-t-0 sm:px-5">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                Güven seviyesi
-              </p>
-              <p className="mt-2 text-lg font-semibold text-white">
-                {summary.averageConfidence === null
-                  ? "Veri yetersiz"
-                  : `%${summary.averageConfidence}`}
-              </p>
-            </div>
-            <div className="border-t border-white/[0.08] py-4 sm:border-t-0 sm:px-5">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                Tarihsel sinyal
-              </p>
-              <p className="mt-2 text-lg font-semibold text-cyan-200">
-                {historicalLabels[summary.historicalSignal]}
-              </p>
-            </div>
+          <div className="bg-[#09111d] p-5 sm:p-6">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.17em] text-slate-600">
+              Confidence
+            </p>
+            <p className="mt-3 text-3xl font-semibold text-white">
+              {hasConfidence ? `%${summary.confidence}` : "Veri yok"}
+            </p>
+          </div>
+
+          <div className="bg-[#09111d] p-5 sm:p-6">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.17em] text-slate-600">
+              Risk
+            </p>
+            <p className="mt-3 text-3xl font-semibold text-white">
+              {riskLabels[summary.riskLevel] || "Veri yok"}
+            </p>
           </div>
         </div>
 
-        <div className="border-t border-white/[0.08] py-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
-            Yapay Zeka Özeti
+        <div className="border-t border-white/[0.08] pt-6">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300">
+            Neden bu karar?
           </p>
-          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300 sm:text-[15px]">
-            {summary.decisionSummary}
+          <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300 sm:text-[15px]">
+            {summary.keyReason || "Karar için yeterli veri yok."}
           </p>
-        </div>
 
-        <div className="border-t border-white/[0.08] pt-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-            Neden bu skor?
-          </p>
-          <div className="mt-4 grid gap-x-8 gap-y-4 md:grid-cols-2">
-            {explanationItems.map((item) => (
-              <div key={item.label} className="flex items-start gap-3">
-                <span
-                  className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${item.marker}`}
-                />
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    {item.label}
+          {(catalysts.length > 0 || warnings.length > 0) && (
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {catalysts.length > 0 && (
+                <div className="rounded-2xl border border-emerald-300/[0.12] bg-emerald-300/[0.035] p-4">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-300/75">
+                    Katalizörler
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-slate-400">
-                    {item.text}
-                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {catalysts.map((catalyst) => (
+                      <li
+                        key={catalyst}
+                        className="flex gap-2 text-xs leading-5 text-slate-400"
+                      >
+                        <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-emerald-300" />
+                        <span>{catalyst}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+
+              {warnings.length > 0 && (
+                <div className="rounded-2xl border border-rose-300/[0.12] bg-rose-300/[0.035] p-4">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-rose-300/75">
+                    Uyarılar
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {warnings.map((warning) => (
+                      <li
+                        key={warning}
+                        className="flex gap-2 text-xs leading-5 text-slate-400"
+                      >
+                        <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-rose-300" />
+                        <span>{warning}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </section>

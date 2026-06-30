@@ -33,6 +33,17 @@ export const DEFAULT_MARKET_ID = MARKET_IDS.US_STOCKS;
 export function getMarketById(marketId) {
   return (
     MARKETS.find((market) => market.id === marketId) ??
-    MARKETS.find((market) => market.id === DEFAULT_MARKET_ID)
+    MARKETS.find((market) => market.id === DEFAULT_MARKET_ID) ??
+    null
   );
+}
+
+export function getDefaultSymbol(market) {
+  if (!Array.isArray(market?.defaultSymbols)) return "";
+
+  const symbol = market.defaultSymbols.find(
+    (item) => typeof item === "string" && item.trim(),
+  );
+
+  return symbol?.trim().toUpperCase() || "";
 }

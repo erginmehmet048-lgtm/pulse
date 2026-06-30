@@ -1,97 +1,91 @@
 import { useMemo, useState } from "react";
-import Header from "./components/Header";
-import NewsFeed from "./components/NewsFeed";
 import AIDecisionCenter from "./components/AIDecisionCenter";
 import HistoricalMemorySummary from "./components/HistoricalMemorySummary";
-import LiveMarketCard from "./components/LiveMarketCard";
-import MarketSelector from "./components/MarketSelector";
+import NewsFeed from "./components/NewsFeed";
 import TopCriticalNews from "./components/TopCriticalNews";
 import {
   DEFAULT_MARKET_ID,
+  getDefaultSymbol,
   getMarketById,
   MARKETS,
 } from "./data/markets";
 import { useNews } from "./hooks/useNews";
 import { generateDecisionSummary } from "./services/decisionCenterService";
-import { generateExplanation } from "./services/explainableAIService";
-import { getMarketSnapshot } from "./services/marketService";
 
 function Dashboard() {
-  const news = useNews();
+  const defaultMarket = getMarketById(DEFAULT_MARKET_ID);
   const [selectedMarketId, setSelectedMarketId] =
-    useState(DEFAULT_MARKET_ID);
+    useState(defaultMarket?.id || "");
   const selectedMarket = getMarketById(selectedMarketId);
   const [selectedSymbol, setSelectedSymbol] = useState(
-    selectedMarket.defaultSymbols[0],
+    getDefaultSymbol(defaultMarket),
   );
-  const marketSnapshot = getMarketSnapshot(
-    selectedSymbol,
-    selectedMarket.id,
-  );
+  const availableSymbols = Array.isArray(selectedMarket?.defaultSymbols)
+    ? selectedMarket.defaultSymbols
+    : [];
+  const activeSymbol = availableSymbols.includes(selectedSymbol)
+    ? selectedSymbol
+    : getDefaultSymbol(selectedMarket);
+  const activeMarketId = selectedMarket?.id || "";
+  const { news, isLoading: isNewsLoading } = useNews({
+    market: activeMarketId,
+    symbol: activeSymbol,
+  });
   const decisionSummary = useMemo(
     () =>
       generateDecisionSummary(
         news,
-        selectedSymbol,
-        selectedMarket.id,
+        activeSymbol,
+        activeMarketId,
       ),
-    [news, selectedMarket.id, selectedSymbol],
-  );
-  const decisionExplanation = useMemo(
-    () => generateExplanation(decisionSummary),
-    [decisionSummary],
+    [activeMarketId, activeSymbol, news],
   );
 
   function handleMarketChange(marketId) {
     const nextMarket = getMarketById(marketId);
+    const nextSymbol = getDefaultSymbol(nextMarket);
+
+    if (!nextMarket?.id) {
+      setSelectedMarketId("");
+      setSelectedSymbol("");
+      return;
+    }
 
     setSelectedMarketId(nextMarket.id);
-    setSelectedSymbol(nextMarket.defaultSymbols[0]);
+    setSelectedSymbol(nextSymbol);
+  }
+
+  function handleSymbolChange(symbol) {
+    const normalizedSymbol = String(symbol || "").trim().toUpperCase();
+
+    if (!availableSymbols.includes(normalizedSymbol)) return;
+    setSelectedSymbol(normalizedSymbol);
   }
 
   return (
     <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-10 lg:py-8">
-      <Header
-        isLiveData={marketSnapshot?.isLiveData}
-        marketDataUnavailable={!marketSnapshot}
-        marketName={selectedMarket.name}
-        symbol={marketSnapshot?.symbol || selectedSymbol}
-      />
-
       <AIDecisionCenter
-        companyName={marketSnapshot?.name || selectedSymbol}
-        explanation={decisionExplanation}
-        symbol={selectedSymbol}
+        markets={MARKETS}
+        onMarketChange={handleMarketChange}
+        onSymbolChange={handleSymbolChange}
+        selectedMarketId={activeMarketId}
+        symbol={activeSymbol}
         summary={decisionSummary}
       />
 
-      <MarketSelector
-        markets={MARKETS}
-        selectedMarketId={selectedMarket.id}
-        selectedSymbol={selectedSymbol}
-        onMarketChange={handleMarketChange}
-        onSymbolChange={setSelectedSymbol}
+      <TopCriticalNews
+        isLoading={isNewsLoading}
+        news={decisionSummary.topNews}
       />
-
-      <LiveMarketCard
-        symbol={marketSnapshot?.symbol || selectedSymbol}
-        name={marketSnapshot?.name}
-        marketName={selectedMarket.name}
-        price={marketSnapshot?.price}
-        change={marketSnapshot?.change}
-        changePercent={marketSnapshot?.changePercent}
-        currency={marketSnapshot?.currency}
-        isLiveData={marketSnapshot?.isLiveData}
-        marketDataUnavailable={!marketSnapshot}
-      />
-
-      <TopCriticalNews news={decisionSummary.topNews} />
 
       <HistoricalMemorySummary
-        summary={decisionSummary.historicalSummary}
+        summary={decisionSummary.historicalMemory}
       />
 
-      <NewsFeed news={decisionSummary.news} />
+      <NewsFeed
+        isLoading={isNewsLoading}
+        news={decisionSummary.news}
+      />
     </main>
   );
 }
