@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import Header from "./components/Header";
 import NewsFeed from "./components/NewsFeed";
 import AIDecisionCenter from "./components/AIDecisionCenter";
-import AiImpactCard from "./components/AiImpactCard";
-import InsightSummary from "./components/InsightSummary";
+import HistoricalMemorySummary from "./components/HistoricalMemorySummary";
 import LiveMarketCard from "./components/LiveMarketCard";
 import MarketSelector from "./components/MarketSelector";
+import TopCriticalNews from "./components/TopCriticalNews";
 import {
   DEFAULT_MARKET_ID,
   getMarketById,
@@ -24,7 +24,10 @@ function Dashboard() {
   const [selectedSymbol, setSelectedSymbol] = useState(
     selectedMarket.defaultSymbols[0],
   );
-  const marketSnapshot = getMarketSnapshot(selectedSymbol);
+  const marketSnapshot = getMarketSnapshot(
+    selectedSymbol,
+    selectedMarket.id,
+  );
   const decisionSummary = useMemo(
     () =>
       generateDecisionSummary(
@@ -48,9 +51,15 @@ function Dashboard() {
 
   return (
     <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-10 lg:py-8">
-      <Header marketName={selectedMarket.name} symbol={selectedSymbol} />
+      <Header
+        isLiveData={marketSnapshot?.isLiveData}
+        marketDataUnavailable={!marketSnapshot}
+        marketName={selectedMarket.name}
+        symbol={marketSnapshot?.symbol || selectedSymbol}
+      />
 
       <AIDecisionCenter
+        companyName={marketSnapshot?.name || selectedSymbol}
         explanation={decisionExplanation}
         symbol={selectedSymbol}
         summary={decisionSummary}
@@ -65,35 +74,24 @@ function Dashboard() {
       />
 
       <LiveMarketCard
-        symbol={marketSnapshot.symbol}
-        name={marketSnapshot.name}
+        symbol={marketSnapshot?.symbol || selectedSymbol}
+        name={marketSnapshot?.name}
         marketName={selectedMarket.name}
-        price={marketSnapshot.price}
-        change={marketSnapshot.change}
-        changePercent={marketSnapshot.changePercent}
-        currency={marketSnapshot.currency}
-        impactScore={decisionSummary.averageImportance}
-        status={decisionSummary.status}
-        importantNewsCount={decisionSummary.importantNewsCount}
-        confidence={decisionSummary.averageConfidence}
-        lastUpdate={marketSnapshot.lastUpdate}
+        price={marketSnapshot?.price}
+        change={marketSnapshot?.change}
+        changePercent={marketSnapshot?.changePercent}
+        currency={marketSnapshot?.currency}
+        isLiveData={marketSnapshot?.isLiveData}
+        marketDataUnavailable={!marketSnapshot}
       />
-      <AiImpactCard
-        impactScore={decisionSummary.averageImportance}
-        status={decisionSummary.status}
-        importantNewsCount={decisionSummary.importantNewsCount}
-        similarEventsCount={decisionSummary.similarEventsCount}
-        positiveReactionRate={decisionSummary.positiveReactionRate}
+
+      <TopCriticalNews news={decisionSummary.topNews} />
+
+      <HistoricalMemorySummary
+        summary={decisionSummary.historicalSummary}
       />
+
       <NewsFeed news={decisionSummary.news} />
-      <InsightSummary
-        impactScore={decisionSummary.averageImportance}
-        status={decisionSummary.status}
-        importantNewsCount={decisionSummary.importantNewsCount}
-        similarEventsCount={decisionSummary.similarEventsCount}
-        positiveReactionRate={decisionSummary.positiveReactionRate}
-        topSignals={decisionSummary.topNews}
-      />
     </main>
   );
 }

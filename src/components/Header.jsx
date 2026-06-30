@@ -1,19 +1,35 @@
-function Header({ marketName, symbol }) {
+function Header({
+  isLiveData = false,
+  marketDataUnavailable = false,
+  marketName,
+  symbol,
+}) {
+  const dataModeLabel = marketDataUnavailable
+    ? "Veri yok"
+    : isLiveData
+      ? "Canlı veri"
+      : "Demo veri";
+  const dataModeTone = isLiveData
+    ? "bg-emerald-400"
+    : marketDataUnavailable
+      ? "bg-rose-400"
+      : "bg-amber-300";
+
   return (
     <header className="mb-7 flex items-start justify-between gap-5 border-b border-white/[0.07] pb-6">
       <div className="min-w-0">
         <div className="mb-3 flex items-center gap-2 xl:hidden">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-400 text-sm font-black text-slate-950">
-            P
+            N
           </span>
-          <span className="font-semibold tracking-tight text-white">Pulse</span>
+          <span className="font-semibold tracking-tight text-white">Nabız</span>
         </div>
         <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-300">
           <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.8)]" />
-          Market intelligence
+          Yatırım zekâsı
         </div>
         <h1 className="truncate text-2xl font-semibold tracking-[-0.03em] text-white sm:text-3xl">
-          {symbol} Intelligence Dashboard
+          {symbol} Karar Paneli
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
           {marketName} · Haber akışını, piyasa etkisini ve geçmiş olayları tek
@@ -23,8 +39,8 @@ function Header({ marketName, symbol }) {
 
       <div className="flex shrink-0 items-center gap-2">
         <div className="hidden items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-slate-400 md:flex">
-          <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          Canlı akış
+          <span className={`h-2 w-2 rounded-full ${dataModeTone}`} />
+          {dataModeLabel}
         </div>
         <button
           type="button"

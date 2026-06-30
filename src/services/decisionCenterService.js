@@ -1,5 +1,14 @@
 import { findSimilarHistoricalEvents } from "./financialMemoryService.js";
 
+const DECISION_LABELS = {
+  strongPositive: "Strong Positive",
+  positive: "Positive",
+  neutral: "Neutral",
+  negative: "Negative",
+  strongNegative: "Strong Negative",
+  insufficient: "Insufficient Data",
+};
+
 function clampScore(value) {
   const score = Number(value);
 
@@ -9,7 +18,7 @@ function clampScore(value) {
 }
 
 function getAverageScore(items, field) {
-  if (!items.length) return 0;
+  if (!items.length) return null;
 
   const total = items.reduce(
     (sum, item) => sum + clampScore(item[field]),
@@ -68,7 +77,7 @@ function getOverallSentiment(counts) {
 }
 
 function getRiskLevel(news, counts, averageConfidence, overallSentiment) {
-  if (!counts.total) return "Medium";
+  if (!counts.total) return "Insufficient Data";
 
   const highImpactNegativeCount = news.filter(
     (item) =>
@@ -95,18 +104,6 @@ function getRiskLevel(news, counts, averageConfidence, overallSentiment) {
   return "Low";
 }
 
-function getWatchStatus(overallSentiment, riskLevel, averageImportance) {
-  if (overallSentiment === "negative" || riskLevel === "High") {
-    return "SELL/RISK WATCH";
-  }
-
-  if (overallSentiment === "positive" && averageImportance >= 45) {
-    return "BUY WATCH";
-  }
-
-  return "NEUTRAL WATCH";
-}
-
 function sortNews(news) {
   return [...news].sort(
     (first, second) =>
@@ -117,63 +114,39 @@ function sortNews(news) {
   );
 }
 
-function getTopNews(sortedNews) {
-  return sortedNews
-    .slice(0, 3)
-    .map((item) => ({
-      id: item.id,
-      title: item.title,
-      url: item.url,
-      sentiment: item.sentiment,
-      impactLabel: item.impactLabel,
-      importanceScore: clampScore(item.importanceScore),
-      summary:
-        item.shortSummary ||
-        item.originalSummary ||
-        item.summary ||
-        "Özet bilgisi bulunmuyor.",
-    }));
-}
-
-function compactTitle(title, maxLength = 90) {
-  const compact = String(title || "Başlık bilgisi bulunmuyor")
-    .replace(/[.!?]+/g, "")
+function getFirstSentence(value) {
+  const text = String(value || "Özet bilgisi bulunmuyor.")
     .replace(/\s+/g, " ")
     .trim();
+  const abbreviationToken = "__PULSE_DOT__";
+  const protectedText = text.replace(
+    /\b(?:[a-z]\.){2,}/gi,
+    (abbreviation) => abbreviation.replaceAll(".", abbreviationToken),
+  );
+  const firstSentence =
+    protectedText.split(/(?<=[.!?…])\s+(?=[A-Z0-9])/)[0] || protectedText;
+  const restored = firstSentence.replaceAll(abbreviationToken, ".");
 
-  return compact.length > maxLength
-    ? `${compact.slice(0, maxLength).trim()}…`
-    : compact;
+  return restored.length > 180
+    ? `${restored.slice(0, 180).trim()}…`
+    : restored;
 }
 
-function createExecutiveSummary({
-  counts,
-  overallSentiment,
-  riskLevel,
-  topNews,
-}) {
-  if (!counts.total) {
-    return "Haber analizi hazırlanıyor. En önemli katalizör henüz belirlenmedi. Yeni veri gelene kadar temkinli izleme önerilir.";
-  }
-
-  const flowDescriptions = {
-    positive: "genel olarak pozitif",
-    neutral: "dengeli ve nötr",
-    negative: "negatif baskının öne çıktığı",
-  };
-  const flowSentence = `Haber akışı ${counts.positive} pozitif, ${counts.neutral} nötr ve ${counts.negative} negatif sinyalle ${flowDescriptions[overallSentiment]} bir görünüm sunuyor.`;
-  const primaryCatalyst = topNews[0];
-  const catalystSentence = primaryCatalyst
-    ? `En önemli katalizör, ${primaryCatalyst.importanceScore}/100 önem skoruyla “${compactTitle(primaryCatalyst.title)}” haberi.`
-    : "En önemli katalizör henüz belirlenmedi.";
-  const riskSentences = {
-    Low: "Risk seviyesi düşük; yine de haber akışındaki yön değişimleri izlenmeli.",
-    Medium:
-      "Risk seviyesi orta; karışık sinyaller ve analiz güvenindeki değişimler yakından izlenmeli.",
-    High: `Risk seviyesi yüksek; ${counts.negative} negatif haber ve yüksek etkili gelişmeler yakından izlenmeli.`,
-  };
-
-  return `${flowSentence} ${catalystSentence} ${riskSentences[riskLevel]}`;
+function getTopNews(sortedNews) {
+  return sortedNews.slice(0, 3).map((item) => ({
+    id: item.id,
+    title: item.title,
+    url: item.url,
+    sentiment: item.sentiment,
+    impactLabel: item.impactLabel,
+    importanceScore: clampScore(item.importanceScore),
+    summary: getFirstSentence(
+      item.shortSummary ||
+        item.originalSummary ||
+        item.summary ||
+        item.description,
+    ),
+  }));
 }
 
 function addHistoricalMemory(news, symbol, marketId) {
@@ -196,6 +169,16 @@ function getHistoricalSignal(averageReaction7D) {
   return "Strong Negative";
 }
 
+function formatSignedPercentage(value) {
+  const sign = value > 0 ? "+" : "";
+  const formatted = Number(value).toLocaleString("tr-TR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  });
+
+  return `${sign}${formatted}%`;
+}
+
 function getHistoricalMetrics(news) {
   const sufficientMemories = news
     .map((item) => item.historicalMemory)
@@ -213,7 +196,13 @@ function getHistoricalMetrics(news) {
       historicalSignal: "Insufficient Data",
       historicalAverageReaction7D: null,
       similarEventsCount: 0,
-      positiveReactionRate: 0,
+      positiveReactionRate: null,
+      historicalSummary: {
+        insufficientData: true,
+        totalSimilarEvents: 0,
+        averageReaction7DLabel: "Veri yetersiz",
+        positiveRateLabel: "Veri yetersiz",
+      },
     };
   }
 
@@ -225,31 +214,91 @@ function getHistoricalMetrics(news) {
   const positiveEvents = uniqueEvents.filter(
     (event) => event.priceReaction7D > 0,
   ).length;
+  const roundedAverage =
+    Math.round((averageReaction7D + Number.EPSILON) * 100) / 100;
+  const positiveRate = Math.round(
+    (positiveEvents / uniqueEvents.length) * 100,
+  );
 
   return {
     historicalSignal: getHistoricalSignal(averageReaction7D),
-    historicalAverageReaction7D:
-      Math.round((averageReaction7D + Number.EPSILON) * 100) / 100,
+    historicalAverageReaction7D: roundedAverage,
     similarEventsCount: uniqueEvents.length,
-    positiveReactionRate: Math.round(
-      (positiveEvents / uniqueEvents.length) * 100,
-    ),
+    positiveReactionRate: positiveRate,
+    historicalSummary: {
+      insufficientData: false,
+      totalSimilarEvents: uniqueEvents.length,
+      averageReaction7DLabel: formatSignedPercentage(roundedAverage),
+      positiveRateLabel: `%${positiveRate}`,
+    },
   };
+}
+
+function getDecisionLabel(aiImpactScore, sentiment, historicalSignal) {
+  if (aiImpactScore === null) return DECISION_LABELS.insufficient;
+
+  if (sentiment === "positive") {
+    return aiImpactScore >= 70
+      ? DECISION_LABELS.strongPositive
+      : DECISION_LABELS.positive;
+  }
+
+  if (sentiment === "negative") {
+    return aiImpactScore >= 70
+      ? DECISION_LABELS.strongNegative
+      : DECISION_LABELS.negative;
+  }
+
+  if (aiImpactScore >= 55 && historicalSignal === "Strong Positive") {
+    return DECISION_LABELS.positive;
+  }
+
+  if (aiImpactScore >= 55 && historicalSignal === "Strong Negative") {
+    return DECISION_LABELS.negative;
+  }
+
+  return DECISION_LABELS.neutral;
+}
+
+function getDecisionSentence({
+  aiImpactScore,
+  historicalSignal,
+  overallSentiment,
+  riskLevel,
+}) {
+  if (aiImpactScore === null) {
+    return "Karar üretmek için yeterli haber verisi yok.";
+  }
+
+  const sentimentLabels = {
+    positive: "pozitif",
+    neutral: "nötr",
+    negative: "negatif",
+  };
+  const riskLabels = {
+    Low: "düşük",
+    Medium: "orta",
+    High: "yüksek",
+  };
+  const historicalLabels = {
+    "Strong Positive": "güçlü pozitif",
+    "Weak Positive": "zayıf pozitif",
+    Neutral: "nötr",
+    "Weak Negative": "zayıf negatif",
+    "Strong Negative": "güçlü negatif",
+    "Insufficient Data": "veri yetersiz",
+  };
+
+  return `Haber akışı ${sentimentLabels[overallSentiment]}, risk seviyesi ${riskLabels[riskLevel]} ve tarihsel sinyal ${historicalLabels[historicalSignal]}.`;
 }
 
 export function generateDecisionSummary(news = [], symbol, marketId) {
   const normalizedNews = Array.isArray(news) ? news : [];
-  const newsWithMemory = addHistoricalMemory(
-    normalizedNews,
-    symbol,
-    marketId,
+  const sortedNews = sortNews(
+    addHistoricalMemory(normalizedNews, symbol, marketId),
   );
-  const sortedNews = sortNews(newsWithMemory);
   const newsCounts = getNewsCounts(sortedNews);
-  const averageImportance = getAverageScore(
-    sortedNews,
-    "importanceScore",
-  );
+  const aiImpactScore = getAverageScore(sortedNews, "importanceScore");
   const averageConfidence = getAverageScore(sortedNews, "confidence");
   const overallSentiment = getOverallSentiment(newsCounts);
   const riskLevel = getRiskLevel(
@@ -258,29 +307,28 @@ export function generateDecisionSummary(news = [], symbol, marketId) {
     averageConfidence,
     overallSentiment,
   );
-  const topNews = getTopNews(sortedNews);
   const historicalMetrics = getHistoricalMetrics(sortedNews);
+  const decisionLabel = getDecisionLabel(
+    aiImpactScore,
+    overallSentiment,
+    historicalMetrics.historicalSignal,
+  );
 
   return {
     news: sortedNews,
-    averageImportance,
+    aiImpactScore,
     averageConfidence,
     overallSentiment,
     riskLevel,
-    newsCounts,
-    topNews,
-    executiveSummary: createExecutiveSummary({
-      counts: newsCounts,
+    decisionLabel,
+    decisionSummary: getDecisionSentence({
+      aiImpactScore,
+      historicalSignal: historicalMetrics.historicalSignal,
       overallSentiment,
       riskLevel,
-      topNews,
     }),
-    status: getWatchStatus(
-      overallSentiment,
-      riskLevel,
-      averageImportance,
-    ),
-    importantNewsCount: newsCounts.highImpact,
+    newsCounts,
+    topNews: getTopNews(sortedNews),
     ...historicalMetrics,
   };
 }

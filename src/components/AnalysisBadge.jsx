@@ -1,16 +1,16 @@
 const variants = {
   positive: {
-    label: "Positive",
+    label: "Pozitif",
     emoji: "🟢",
     className: "border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-400",
   },
   negative: {
-    label: "Negative",
+    label: "Negatif",
     emoji: "🔴",
     className: "border-rose-400/20 bg-rose-400/[0.08] text-rose-400",
   },
   neutral: {
-    label: "Neutral",
+    label: "Nötr",
     emoji: "🟡",
     className: "border-slate-400/20 bg-slate-400/[0.08] text-slate-400",
   },

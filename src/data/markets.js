@@ -7,7 +7,7 @@ export const MARKET_IDS = {
 export const MARKETS = [
   {
     id: MARKET_IDS.US_STOCKS,
-    name: "US Stocks",
+    name: "ABD Hisseleri",
     description: "Nasdaq / NYSE",
     icon: "🇺🇸",
     defaultSymbols: ["SPCX", "TSLA", "NVDA", "AAPL"],
@@ -21,7 +21,7 @@ export const MARKETS = [
   },
   {
     id: MARKET_IDS.CRYPTO,
-    name: "Crypto",
+    name: "Kripto",
     description: "Dijital varlıklar",
     icon: "₿",
     defaultSymbols: ["BTC", "ETH", "SOL", "XRP"],

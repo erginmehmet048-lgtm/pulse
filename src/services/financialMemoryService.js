@@ -124,6 +124,16 @@ function getAverage(events, field) {
   return roundReaction(total / events.length);
 }
 
+function formatReaction(value) {
+  const sign = value > 0 ? "+" : "";
+  const formatted = Number(value).toLocaleString("tr-TR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  });
+
+  return `${sign}${formatted}%`;
+}
+
 function estimateEventType(article) {
   const text = normalizeText(
     `${article.title || ""} ${article.shortSummary || article.summary || article.description || ""}`,
@@ -153,6 +163,9 @@ function createEmptyResult(eventType, similarEvents = []) {
     averageReaction1D: null,
     averageReaction3D: null,
     averageReaction7D: null,
+    averageReaction1DLabel: null,
+    averageReaction3DLabel: null,
+    averageReaction7DLabel: null,
     positiveRate: null,
     negativeRate: null,
     bestCase: null,
@@ -186,13 +199,19 @@ export function findSimilarHistoricalEvents(article, symbol, marketId) {
     (first, second) =>
       second.priceReaction7D - first.priceReaction7D,
   );
+  const averageReaction1D = getAverage(similarEvents, "priceReaction1D");
+  const averageReaction3D = getAverage(similarEvents, "priceReaction3D");
+  const averageReaction7D = getAverage(similarEvents, "priceReaction7D");
 
   return {
     eventType,
     totalSimilarEvents: similarEvents.length,
-    averageReaction1D: getAverage(similarEvents, "priceReaction1D"),
-    averageReaction3D: getAverage(similarEvents, "priceReaction3D"),
-    averageReaction7D: getAverage(similarEvents, "priceReaction7D"),
+    averageReaction1D,
+    averageReaction3D,
+    averageReaction7D,
+    averageReaction1DLabel: formatReaction(averageReaction1D),
+    averageReaction3DLabel: formatReaction(averageReaction3D),
+    averageReaction7DLabel: formatReaction(averageReaction7D),
     positiveRate: Math.round(
       (positiveEvents.length / similarEvents.length) * 100,
     ),

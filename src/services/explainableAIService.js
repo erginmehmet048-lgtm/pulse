@@ -1,29 +1,24 @@
 const HISTORICAL_REASONS = {
   "Strong Positive":
-    "Similar historical events mostly led to positive short-term reactions.",
+    "Benzer geçmiş olaylar çoğunlukla pozitif kısa vadeli tepki üretti.",
   "Weak Positive":
-    "Similar historical events showed mildly positive short-term reactions.",
-  Neutral:
-    "Similar historical events produced a balanced price response.",
+    "Benzer geçmiş olaylarda sınırlı pozitif fiyat tepkisi görüldü.",
+  Neutral: "Benzer geçmiş olaylar dengeli bir fiyat tepkisi üretti.",
   "Weak Negative":
-    "Similar historical events showed mildly negative short-term reactions.",
+    "Benzer geçmiş olaylarda sınırlı negatif fiyat tepkisi görüldü.",
   "Strong Negative":
-    "Similar historical events mostly led to negative short-term reactions.",
+    "Benzer geçmiş olaylar çoğunlukla negatif kısa vadeli tepki üretti.",
   "Insufficient Data":
-    "There is not enough historical data to strongly support this signal.",
+    "Bu sinyali güçlü biçimde destekleyecek yeterli tarihsel veri yok.",
 };
 
 function getPositiveFactors(summary, counts) {
-  const factors = [];
-
   if (counts.highImpact >= 2) {
-    factors.push("Multiple high-impact news items are driving the score.");
-  } else if (counts.highImpact === 1) {
-    factors.push("A high-impact news item is supporting the score.");
+    return ["Birden fazla yüksek etkili haber ana skoru destekliyor."];
   }
 
   if (counts.positive > counts.negative) {
-    factors.push("Positive news flow outweighs negative signals.");
+    return ["Pozitif haber akışı negatif sinyallerden daha güçlü."];
   }
 
   if (
@@ -31,23 +26,19 @@ function getPositiveFactors(summary, counts) {
       summary.historicalSignal,
     )
   ) {
-    factors.push("Historical memory adds positive support.");
+    return ["Tarihsel hafıza karar görünümüne pozitif destek veriyor."];
   }
 
-  return factors.length
-    ? factors.slice(0, 2)
-    : ["No strong positive driver is present in the current news flow."];
+  return ["Mevcut akışta güçlü bir pozitif sürükleyici bulunmuyor."];
 }
 
 function getNegativeFactors(summary, counts) {
-  const factors = [];
-
   if (counts.negative > 0) {
-    factors.push("Negative news flow increases short-term risk.");
+    return ["Negatif haber akışı kısa vadeli riski artırıyor."];
   }
 
   if (summary.riskLevel === "High") {
-    factors.push("The current risk profile remains elevated.");
+    return ["Mevcut risk profili yüksek seviyede kalıyor."];
   }
 
   if (
@@ -55,59 +46,45 @@ function getNegativeFactors(summary, counts) {
       summary.historicalSignal,
     )
   ) {
-    factors.push("Historical memory adds downside pressure.");
+    return ["Tarihsel hafıza aşağı yönlü risk baskısı oluşturuyor."];
   }
 
-  return factors.length
-    ? factors.slice(0, 2)
-    : ["No material negative news driver is currently detected."];
+  return ["Belirgin bir negatif haber sürükleyicisi tespit edilmedi."];
 }
 
 function getConfidenceReason(summary) {
-  const hasHistoricalSupport =
-    summary.historicalSignal !== "Insufficient Data";
-  const hasDirectionalSentiment = summary.overallSentiment !== "neutral";
-
   if (summary.averageConfidence >= 75) {
-    if (hasHistoricalSupport && hasDirectionalSentiment) {
-      return "Confidence is supported by consistent sentiment and historical alignment.";
-    }
-
-    if (hasHistoricalSupport) {
-      return "Confidence is supported by stable classifications and available historical evidence.";
-    }
-
-    return "Confidence is supported by news consistency, while historical evidence remains limited.";
+    return "Güven seviyesi, tutarlı haber sınıflandırmasıyla destekleniyor.";
   }
 
   if (summary.averageConfidence >= 55) {
-    return "Confidence is moderate because the current signals are not fully aligned.";
+    return "Güven seviyesi orta; sinyaller henüz tamamen aynı yönde değil.";
   }
 
-  return "Confidence remains limited because current signals are sparse or mixed.";
+  return "Güven seviyesi sınırlı; mevcut sinyaller seyrek veya karışık.";
 }
 
 function getNewsFlowReason(summary, counts) {
-  if (!counts.total) return "No analyzed news is available yet.";
+  if (!counts.total) return "Henüz analiz edilmiş haber bulunmuyor.";
 
   if (summary.overallSentiment === "positive") {
-    return `${counts.positive} of ${counts.total} analyzed news items support a positive view.`;
+    return `${counts.total} haberin ${counts.positive} tanesi pozitif görünümü destekliyor.`;
   }
 
   if (summary.overallSentiment === "negative") {
-    return `${counts.negative} of ${counts.total} analyzed news items add negative pressure.`;
+    return `${counts.total} haberin ${counts.negative} tanesi negatif baskı oluşturuyor.`;
   }
 
-  return `The flow is mixed, with ${counts.positive} positive, ${counts.neutral} neutral, and ${counts.negative} negative items.`;
+  return `Akış ${counts.positive} pozitif, ${counts.neutral} nötr ve ${counts.negative} negatif haberle dengeli.`;
 }
 
 function getFinalTakeaway(summary, counts) {
   if (!counts.total) {
-    return "Wait for additional news before relying on the current score.";
+    return "Karara güvenmeden önce ek haber verisi beklenmeli.";
   }
 
   if (summary.riskLevel === "High") {
-    return "Treat the signal cautiously until the main negative catalysts weaken.";
+    return "Ana negatif katalizörler zayıflayana kadar görünüm temkinli ele alınmalı.";
   }
 
   if (
@@ -116,7 +93,7 @@ function getFinalTakeaway(summary, counts) {
       summary.historicalSignal,
     )
   ) {
-    return "The evidence leans positive, but fresh news and price confirmation still matter.";
+    return "Görünüm pozitif tarafa eğiliyor ancak yeni haber teyidi hâlâ önemli.";
   }
 
   if (
@@ -125,10 +102,10 @@ function getFinalTakeaway(summary, counts) {
       summary.historicalSignal,
     )
   ) {
-    return "Downside risk is elevated, so new catalysts should be monitored closely.";
+    return "Aşağı yönlü risk yüksek olduğu için yeni katalizörler yakından izlenmeli.";
   }
 
-  return "The score remains balanced and needs a clearer catalyst for direction.";
+  return "Görünüm dengeli; yön için daha güçlü bir katalizör gerekiyor.";
 }
 
 export function generateExplanation(decisionSummary = {}) {
@@ -141,7 +118,7 @@ export function generateExplanation(decisionSummary = {}) {
   };
   const normalizedSummary = {
     overallSentiment: decisionSummary.overallSentiment || "neutral",
-    riskLevel: decisionSummary.riskLevel || "Medium",
+    riskLevel: decisionSummary.riskLevel || "Insufficient Data",
     averageConfidence: Number(decisionSummary.averageConfidence) || 0,
     historicalSignal:
       decisionSummary.historicalSignal || "Insufficient Data",
