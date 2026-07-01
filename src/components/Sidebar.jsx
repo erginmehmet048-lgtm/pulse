@@ -1,4 +1,7 @@
 export default function Sidebar() {
+  const isLiveConfigured = Boolean(
+    String(import.meta.env.VITE_FINNHUB_API_KEY || "").trim(),
+  );
   const menuItems = [
     { label: "Dashboard", icon: "grid", active: true },
     { label: "İzleme Listesi", icon: "watch" },
@@ -23,7 +26,7 @@ export default function Sidebar() {
         </div>
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-white">
-            Nabız
+            Pulse
           </h2>
           <p className="text-[11px] text-slate-500">
             Investment Intelligence
@@ -60,10 +63,12 @@ export default function Sidebar() {
 
       <div className="mt-auto rounded-2xl border border-amber-300/[0.1] bg-amber-300/[0.035] p-4">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200/70">
-          Demo veri modu
+          {isLiveConfigured ? "Canlı veri hazır" : "Demo veri modu"}
         </p>
         <p className="mt-2 text-xs leading-5 text-slate-500">
-          Piyasa fiyatları gerçek zamanlı değildir.
+          {isLiveConfigured
+            ? "Piyasa fiyatları Finnhub üzerinden güncellenir."
+            : "API anahtarı eklenene kadar güvenli demo fiyatları kullanılır."}
         </p>
       </div>
     </aside>

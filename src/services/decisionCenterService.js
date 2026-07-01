@@ -1,85 +1,139 @@
-import { generateAIDecision } from "./aiDecisionEngine.js";
-import { retrieveHistoricalMemory } from "./historicalMemoryService.js";
+const POSITIVE_WORDS = [
+  "successful",
+  "launch",
+  "contract",
+  "partnership",
+  "approval",
+  "revenue",
+  "growth",
+  "deal",
+  "milestone",
+  "expansion",
+  "record",
+  "profitable",
+];
 
-function getFirstSentence(value) {
-  const text = String(value || "Özet bilgisi bulunmuyor.")
-    .replace(/\s+/g, " ")
-    .trim();
-  const abbreviationToken = "__PULSE_DOT__";
-  const protectedText = text.replace(
-    /\b(?:[a-z]\.){2,}/gi,
-    (abbreviation) => abbreviation.replaceAll(".", abbreviationToken),
-  );
-  const firstSentence =
-    protectedText.split(/(?<=[.!?…])\s+(?=[A-Z0-9])/)[0] ||
-    protectedText;
-  const restored = firstSentence.replaceAll(abbreviationToken, ".");
+const NEGATIVE_WORDS = [
+  "delay",
+  "failure",
+  "lawsuit",
+  "investigation",
+  "loss",
+  "debt",
+  "crash",
+  "cancel",
+  "risk",
+  "warning",
+  "decline",
+  "bankruptcy",
+];
 
-  return restored.length > 180
-    ? `${restored.slice(0, 180).trim()}…`
-    : restored;
+function clamp(value) {
+  return Math.min(Math.max(Math.round(Number(value) || 0), 0), 100);
 }
 
-function getTopNews(criticalNews) {
-  return criticalNews.map((item) => ({
-    id: item.id,
-    title: item.title,
-    url: item.url,
-    sentiment: item.sentiment,
-    impactLabel: item.impactLabel,
-    impactScore: item.impactScore,
-    importanceScore: item.impactScore,
-    summary: getFirstSentence(
-      item.shortSummary ||
-        item.originalSummary ||
-        item.summary ||
-        item.description,
-    ),
-  }));
+function findWords(text, words) {
+  const normalized = String(text || "").toLocaleLowerCase("en-US");
+  return words.filter((word) => normalized.includes(word));
 }
 
-function addHistoricalMemory(news, historicalMemory) {
-  return news.map((item) => ({
-    ...item,
-    historicalMemory,
-  }));
+function unique(values) {
+  return [...new Set(values.filter(Boolean))];
 }
 
-export function generateDecisionSummary(news = [], symbol, marketId) {
-  const historicalMemory = retrieveHistoricalMemory({
-    symbol,
-    marketId,
+export function buildDecisionSummary({ symbol, news, market } = {}) {
+  const items = Array.isArray(news) ? news.filter(Boolean) : [];
+  const positiveMatches = [];
+  const negativeMatches = [];
+
+  items.forEach((item) => {
+    const text = `${item?.title || ""} ${item?.summary || ""}`;
+    positiveMatches.push(...findWords(text, POSITIVE_WORDS));
+    negativeMatches.push(...findWords(text, NEGATIVE_WORDS));
   });
-  const aiDecision = generateAIDecision(news, {
-    historicalMemory,
-  });
-  const engineSummary = aiDecision.decisionSummary;
-  const sortedNews = addHistoricalMemory(
-    aiDecision.news,
-    historicalMemory,
+
+  const positiveCount = positiveMatches.length;
+  const negativeCount = negativeMatches.length;
+  const keywordEvidence = positiveCount + negativeCount;
+  const marketMove = Number(market?.changePercent);
+  const marketContribution = Number.isFinite(marketMove)
+    ? Math.min(Math.max(marketMove * 1.5, -10), 10)
+    : 0;
+  const newsContribution = Math.min((positiveCount - negativeCount) * 6, 30);
+  const aiImpactScore = clamp(50 + newsContribution + marketContribution);
+  const sentiment =
+    positiveCount > negativeCount
+      ? "positive"
+      : negativeCount > positiveCount
+        ? "negative"
+        : "neutral";
+  const signal =
+    aiImpactScore >= 62 && sentiment !== "negative"
+      ? "BUY WATCH"
+      : aiImpactScore <= 42 || sentiment === "negative"
+        ? "RISK WATCH"
+        : "NEUTRAL WATCH";
+  const averageRelevance = items.length
+    ? items.reduce(
+        (total, item) => total + (Number(item?.relevanceScore) || 0),
+        0,
+      ) / items.length
+    : 0;
+  const confidenceScore = clamp(
+    28 +
+      Math.min(items.length * 7, 35) +
+      Math.min(keywordEvidence * 5, 25) +
+      (market?.price != null ? 8 : 0) +
+      averageRelevance * 0.08,
   );
-  const newsCounts = {
-    total: engineSummary.totalNews,
-    ...engineSummary.sentimentCounts,
-    highImpact: sortedNews.filter(
-      (item) => item.impactLabel === "High",
-    ).length,
-  };
+  const importantNewsCount = items.filter(
+    (item) => Number(item?.relevanceScore) >= 50,
+  ).length;
+  const topReasons = [];
+  const riskNotes = [];
+
+  if (positiveCount) {
+    topReasons.push(
+      `${positiveCount} pozitif etki ifadesi: ${unique(positiveMatches)
+        .slice(0, 3)
+        .join(", ")}.`,
+    );
+  }
+  if (Number.isFinite(marketMove)) {
+    topReasons.push(
+      `${symbol || "Varlık"} gün içi değişimi ${marketMove >= 0 ? "+" : ""}${marketMove.toFixed(2)}%.`,
+    );
+  }
+  if (importantNewsCount) {
+    topReasons.push(`${importantNewsCount} haber yüksek ilişki skoru taşıyor.`);
+  }
+  if (!topReasons.length) {
+    topReasons.push("Yön oluşturmak için haber kanıtı henüz sınırlı.");
+  }
+
+  if (negativeCount) {
+    riskNotes.push(
+      `${negativeCount} risk ifadesi: ${unique(negativeMatches)
+        .slice(0, 3)
+        .join(", ")}.`,
+    );
+  }
+  if (!items.length) riskNotes.push("Haber verisi bulunmadığı için güven düşürüldü.");
+  if (!market?.isLive) riskNotes.push("Piyasa snapshot’ı demo veridir.");
+  if (!riskNotes.length) riskNotes.push("Belirgin negatif haber sinyali saptanmadı.");
 
   return {
-    news: sortedNews,
-    aiImpactScore: engineSummary.aiImpactScore,
-    sentiment: engineSummary.sentiment,
-    overallSentiment: engineSummary.sentiment || "neutral",
-    confidence: engineSummary.confidence,
-    riskLevel: engineSummary.riskLevel,
-    decisionLabel: engineSummary.decisionLabel,
-    keyReason: engineSummary.keyReason,
-    catalysts: engineSummary.catalysts,
-    warnings: engineSummary.warnings,
-    newsCounts,
-    topNews: getTopNews(aiDecision.criticalNews),
-    aiDecisionSummary: engineSummary,
-    historicalMemory,
+    aiImpactScore,
+    signal,
+    sentiment,
+    confidenceScore,
+    topReasons: topReasons.slice(0, 3),
+    riskNotes: riskNotes.slice(0, 3),
+    importantNewsCount,
   };
+}
+
+// Kept as a compatibility adapter for older consumers.
+export function generateDecisionSummary(news = [], symbol, market) {
+  return buildDecisionSummary({ symbol, news, market });
 }

@@ -1,42 +1,54 @@
-import { useEffect, useState } from "react";
-import { getNews } from "../services/newsService";
+import { useCallback, useEffect, useState } from "react";
+import { getDemoNews, getNews } from "../services/newsService";
 
-export function useNews({ market, symbol } = {}) {
-  const [news, setNews] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function useNews({ symbol, limit = 10 } = {}) {
+  const [state, setState] = useState({
+    news: [],
+    isLoading: true,
+    error: null,
+    isFallback: false,
+  });
+  const [requestVersion, setRequestVersion] = useState(0);
+
+  const retry = useCallback(() => {
+    setRequestVersion((version) => version + 1);
+  }, []);
 
   useEffect(() => {
-    if (!market || !symbol) {
-      setNews([]);
-      setIsLoading(false);
+    if (!symbol) {
+      setState({ news: [], isLoading: false, error: null, isFallback: false });
       return undefined;
     }
 
     const controller = new AbortController();
     let isActive = true;
+    setState((current) => ({ ...current, isLoading: true, error: null }));
 
-    async function loadNews() {
-      setIsLoading(true);
-      setNews([]);
-
-      const data = await getNews({
-        market,
-        symbol,
-        signal: controller.signal,
+    getNews({ symbol, limit, signal: controller.signal })
+      .then((news) => {
+        if (!isActive) return;
+        setState({
+          news,
+          isLoading: false,
+          error: null,
+          isFallback: false,
+        });
+      })
+      .catch((error) => {
+        if (!isActive || error?.name === "AbortError") return;
+        setState({
+          news: getDemoNews({ symbol }),
+          isLoading: false,
+          error,
+          isFallback: true,
+        });
       });
 
-      if (isActive) {
-        setNews(data);
-        setIsLoading(false);
-      }
-    }
-
-    loadNews();
     return () => {
       isActive = false;
       controller.abort();
     };
-  }, [market, symbol]);
+  }, [limit, requestVersion, symbol]);
 
-  return { news, isLoading };
+  return { ...state, retry };
 }
